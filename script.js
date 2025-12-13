@@ -40,6 +40,19 @@
     checkReminders();
     setInterval(checkReminders, REMINDER_CHECK_INTERVAL);
 
+    // Debug: Add manual reminder check button (remove in production)
+    const debugBtn = document.createElement('button');
+    debugBtn.textContent = '🔔 Test Reminders Now';
+    debugBtn.style.cssText = 'position: fixed; bottom: 20px; right: 20px; padding: 10px 20px; background: #f59e0b; color: white; border: none; border-radius: 8px; cursor: pointer; z-index: 999; font-weight: 600;';
+    debugBtn.onclick = function() {
+        console.log('Manual reminder check triggered');
+        console.log('Current time:', new Date().toLocaleTimeString());
+        console.log('Tasks with reminders:', tasks.filter(t => t.reminderTime && !t.completed));
+        checkReminders();
+        showNotification('Reminder check completed! Check console for details.', 'info');
+    };
+    document.body.appendChild(debugBtn);
+
     // Event listeners
     addBtn.addEventListener('click', handleAddOrUpdateTask);
     taskInput.addEventListener('keypress', function(e) {
@@ -98,16 +111,18 @@
             // Check if it's time for reminder (within the window)
             const timeDiff = taskDateObj - now;
             
-            if (timeDiff > 0 && timeDiff < REMINDER_WINDOW) {
-                showNotification(`Reminder: ${task.text}`, 'warning');
+            // Show reminder if within 1 minute window OR if the time has passed (up to 5 minutes late)
+            if ((timeDiff > 0 && timeDiff < REMINDER_WINDOW) || (timeDiff < 0 && timeDiff > -300000)) {
+                showNotification(`🔔 Reminder: ${task.text}`, 'warning');
                 notifiedReminders.add(reminderKey);
+                console.log(`Reminder shown for task: ${task.text} at ${new Date().toLocaleTimeString()}`);
             }
             
             // Check for overdue tasks
             if (task.dueDate) {
                 const dueDateTime = new Date(task.dueDate + 'T23:59:59');
                 if (now > dueDateTime && !task.notifiedOverdue) {
-                    showNotification(`Overdue: ${task.text} was due on ${formatDate(task.dueDate)}`, 'danger');
+                    showNotification(`⚠️ Overdue: ${task.text} was due on ${formatDate(task.dueDate)}`, 'danger');
                     task.notifiedOverdue = true;
                     saveTasks();
                 }
@@ -115,7 +130,7 @@
             
             // Check for tasks due today
             if (task.dueDate && isDueToday(task.dueDate) && !task.notifiedDueToday) {
-                showNotification(`Due Today: ${task.text} is due today!`, 'warning');
+                showNotification(`📅 Due Today: ${task.text} is due today!`, 'warning');
                 task.notifiedDueToday = true;
                 saveTasks();
             }
